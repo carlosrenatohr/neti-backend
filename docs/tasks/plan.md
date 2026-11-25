@@ -22,7 +22,7 @@ tests/
 
 Status legend: `[ ]` pending · `[x]` done and verified.
 
-Current status: Phases 0–6 implemented and verified; Phase 7 documentation in progress; Phases 8 pending final review.
+Current status: Phases 0–8 implemented and verified. Final evidence is recorded in `docs/tasks/phase-08-verification.md`.
 
 ### Phase 0 — Environment discovery and baseline
 
