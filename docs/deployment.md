@@ -81,7 +81,9 @@ Do not set `ASPNETCORE_URLS`: the application reads `PORT` and binds to it.
 
 ### Auto-deploy
 
-The service is created with auto-deploy enabled, but automatic deployments on push require the Render GitHub integration to be authorized for the repository. After the initial setup, confirm that a push to `main` starts a deploy. If it does not, either authorize the Render GitHub App for the repository or trigger deploys manually after the CI workflow succeeds.
+The service is created with auto-deploy enabled, but automatic deployments on push require the Render GitHub integration to be authorized for the repository. In the initial setup, pushes to `main` did not start a deploy by themselves; deploys were triggered manually after CI succeeded. Authorize the Render GitHub App for the repository to enable push-to-deploy, or keep triggering deploys after the `ci` workflow passes.
+
+The health check path is empty on an MCP-created service. Set it to `/health/live` in the service's Settings page so failed rollouts keep the previous version serving.
 
 ## Verification
 
@@ -93,6 +95,17 @@ curl -fsS https://marcas-autos-api.onrender.com/scalar
 ```
 
 Expected: `Healthy`, the four seeded brands (or the current data), a valid OpenAPI 3.1 document, and the Scalar HTML page. Confirm the deployed commit in Render matches the validated `main` commit.
+
+### Last verified result (2026-11-25)
+
+| Check | Result |
+|-------|--------|
+| `/health/live` | `200 Healthy` |
+| `/health` | `200 Healthy` (PostgreSQL reachable) |
+| `/api/v1/marcas-autos` | `200` with Chevrolet, Ford, Honda, Toyota |
+| `/openapi/v1.json` | `200`, OpenAPI 3.1.1, path and 200/500 responses |
+| `/scalar` | `200 text/html`; JS and favicon assets load; document `v1` configured |
+| Neon | PostgreSQL 17.12; `InitialCreate` in `__EFMigrationsHistory`; 4 seed rows |
 
 ## Rollback
 

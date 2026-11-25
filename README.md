@@ -154,7 +154,7 @@ dotnet test -c Release
 - Integration tests run the real HTTP pipeline on SQLite in memory.
 - `scripts/coverage.sh` collects Coverlet coverage and renders an HTML report in `coverage/report`.
 
-Coverlet is a quality signal, not a target: tests assert real behavior and contracts, and only generated EF migrations are excluded in `coverlet.runsettings`. The latest run reports 96.5% line coverage and 66.6% branch coverage.
+Coverlet is a quality signal, not a target: tests assert real behavior and contracts, and only generated EF migrations are excluded in `coverlet.runsettings`. The latest run reports 96.6% line coverage and 66.6% branch coverage.
 
 ## Deployment
 
