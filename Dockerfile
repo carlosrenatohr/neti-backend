@@ -25,6 +25,12 @@ ENTRYPOINT ["dotnet", "ef", "database", "update", "--project", "src/MarcasAutos.
 # -- Runtime stage: minimal ASP.NET image running as the built-in non-root user --
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+# -- Npgsql probes GSSAPI on first connection; the trimmed image omits it --
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 COPY --from=build /app/publish .
