@@ -7,3 +7,6 @@ logs/
 docs/
 .github/
 *.user
+.env
+.env.*
+!.env.example
