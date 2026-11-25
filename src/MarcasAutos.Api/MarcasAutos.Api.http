@@ -1,6 +1,11 @@
 @MarcasAutos.Api_HostAddress = http://localhost:5130
 
-GET {{MarcasAutos.Api_HostAddress}}/weatherforecast/
+GET {{MarcasAutos.Api_HostAddress}}/api/v1/marcas-autos
 Accept: application/json
+
+###
+
+GET {{MarcasAutos.Api_HostAddress}}/health
+Accept: text/plain
 
 ###
