@@ -1,142 +1,87 @@
 # Marcas Autos API
 
-Backend technical challenge implemented with .NET 10, ASP.NET Core, Entity Framework Core and PostgreSQL. It exposes a single read endpoint backed by a migrated, seeded `MarcasAutos` table, with unit and HTTP integration tests and a reproducible Docker Compose environment.
+Small ASP.NET Core API for listing car brands from PostgreSQL. The project uses EF Core migrations for the schema and seed data, and Docker Compose to run the database and API together.
 
-## 1. Overview
+## Run it with Docker
 
-- Domain: vehicle brands (`MarcasAutos`).
-- Endpoint: `GET /api/v1/marcas-autos`.
-- Persistence: PostgreSQL through Npgsql; schema owned by EF Core migrations.
-- Delivery: multi-stage Docker image, Compose stack with database, one-shot migrator and API.
-- Quality: 12 tests, 100% line and branch coverage on authored code.
-
-## 2. Architecture
-
-```text
-src/
-  MarcasAutos.Api/             HTTP layer: controller, ProblemDetails, health checks, OpenAPI
-  MarcasAutos.Application/     Entity, DTO, repository port, service and DI registration
-  MarcasAutos.Infrastructure/  DbContext, Fluent API configuration, repository, migrations
-tests/
-  MarcasAutos.UnitTests/       Service/controller tests with EF Core InMemory and NSubstitute
-  MarcasAutos.IntegrationTests/ HTTP tests with WebApplicationFactory and SQLite in-memory
-```
-
-Dependency direction:
-
-```text
-Api ──> Application <── Infrastructure
- │                              ▲
- └──────────────────────────────┘
-tests ──> the projects they exercise
-```
-
-Request flow:
-
-```text
-GET /api/v1/marcas-autos
-  -> MarcasAutosController (HTTP concerns)
-  -> IMarcasAutosService / MarcasAutosService (maps entity to DTO)
-  -> IMarcasAutosRepository / MarcasAutosRepository (AsNoTracking, ordered query)
-  -> MarcasAutosDbContext -> PostgreSQL
-```
-
-## 3. Technology stack
-
-| Concern | Choice |
-|---------|--------|
-| Runtime | .NET 10 LTS (SDK 10.0.404, ASP.NET Core runtime 10.0.15) |
-| Language | C# 14 |
-| API | ASP.NET Core controllers, OpenAPI |
-| Persistence | EF Core 10.0.15, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.4 |
-| Tests | xUnit 2.9, NSubstitute 6.2, EF Core InMemory, SQLite in-memory, WebApplicationFactory |
-| Coverage | Coverlet collector + ReportGenerator |
-| Containers | Docker multi-stage, Docker Compose v2 |
-
-## 4. Prerequisites
-
-- .NET 10 SDK.
-- Docker Engine with Compose v2 (only needed for the containerized flow).
-- PostgreSQL 14+ if you run the database outside Docker.
-- Optional: `dotnet-ef` global tool and `dotnet-reportgenerator-globaltool`.
+Requirements: Docker Engine and Docker Compose v2.
 
 ```bash
-dotnet tool install --global dotnet-ef --version 10.0.15
-dotnet tool install --global dotnet-reportgenerator-globaltool
+docker compose up --build -d
+docker compose ps
 ```
 
-If the SDK is installed user-local, export it first:
+Compose starts three services:
+
+- `db`: PostgreSQL 17, with a persistent volume and a readiness check.
+- `migrator`: applies EF Core migrations after PostgreSQL is ready, then exits.
+- `api`: starts after migrations finish successfully.
+
+The API is available at `http://localhost:8080`. PostgreSQL is published on `localhost:5432` by default. If that port is already in use, set `POSTGRES_PORT=5433` in a local `.env` file. Start with the example if you need custom settings:
 
 ```bash
-export DOTNET_ROOT="$HOME/.dotnet"
-export PATH="$DOTNET_ROOT:$HOME/.dotnet/tools:$PATH"
+cp .env.example .env
 ```
 
-## 5. Local development
+### Smoke test
+
+These checks confirm the containers are running, the API can query PostgreSQL, and the migration inserted the sample brands:
 
 ```bash
-dotnet restore
-dotnet build
-dotnet run --project src/MarcasAutos.Api
+# Both db and api should be running; db should be healthy.
+docker compose ps
+
+# The API health check should say Healthy.
+curl -fsS http://localhost:8080/health
+
+# Expect four brands: Chevrolet, Ford, Honda and Toyota.
+curl -fsS http://localhost:8080/api/v1/marcas-autos
+
+# Check the same records directly in PostgreSQL.
+docker compose exec db psql -U postgres -d marcas_autos \
+  -c 'SELECT "Id", "Nombre" FROM "MarcasAutos" ORDER BY "Id";'
 ```
 
-`launchSettings.json` exposes the API on `http://localhost:5130` during `dotnet run`.
+If something fails, inspect the service logs:
 
-## 6. PostgreSQL configuration
+```bash
+docker compose logs --tail=100 db migrator api
+```
 
-The connection string is read from `ConnectionStrings:MarcasAutos`:
+Stop the services but keep the database volume:
 
-- Development default in `src/MarcasAutos.Api/appsettings.json` (local, non-secret values).
-- Override with the standard environment variable:
+```bash
+docker compose down
+```
+
+To remove the database volume and start from a clean database next time:
+
+```bash
+docker compose down -v
+```
+
+## Run locally
+
+Requirements: .NET 10 SDK and PostgreSQL. The default local connection string is in `src/MarcasAutos.Api/appsettings.json`; override it with an environment variable when needed:
 
 ```bash
 export ConnectionStrings__MarcasAutos="Host=localhost;Port=5432;Database=marcas_autos;Username=postgres;Password=postgres"
+dotnet restore
+dotnet ef database update --project src/MarcasAutos.Infrastructure --startup-project src/MarcasAutos.Api
+dotnet run --project src/MarcasAutos.Api
 ```
 
-Inside Compose the host is the service name `db`, never `localhost`. Startup fails fast if the connection string is missing.
+The development launch profile listens at `http://localhost:5130`.
 
-## 7. Migrations
-
-```bash
-# Apply migrations
-dotnet ef database update \
-  --project src/MarcasAutos.Infrastructure \
-  --startup-project src/MarcasAutos.Api
-
-# Add a new migration
-dotnet ef migrations add <Name> \
-  --project src/MarcasAutos.Infrastructure \
-  --startup-project src/MarcasAutos.Api \
-  --output-dir Persistence/Migrations
-
-# Inspect the generated SQL
-dotnet ef migrations script \
-  --project src/MarcasAutos.Infrastructure \
-  --startup-project src/MarcasAutos.Api
-```
-
-Migrations are the only schema mechanism; `EnsureCreated` is not used by the application.
-
-## 8. Seed data
-
-`MarcaAutoConfiguration` declares deterministic seed rows through `HasData`, so the initial migration inserts them:
-
-| Id | Nombre |
-|----|--------|
-| 1 | Toyota |
-| 2 | Ford |
-| 3 | Honda |
-| 4 | Chevrolet |
-
-Re-running `database update` is idempotent: EF Core records the migration in `__EFMigrationsHistory`.
-
-## 9. API
+## API
 
 ```http
 GET /api/v1/marcas-autos
 ```
 
-Sample response (`200 OK`):
+Returns `200 OK` with a JSON array. If there are no records, the response is `200 OK` with `[]`. The endpoint is documented at `/openapi/v1.json` in Development. `GET /health` checks API and database availability.
+
+Example response:
 
 ```json
 [
@@ -147,71 +92,52 @@ Sample response (`200 OK`):
 ]
 ```
 
-- Empty table: `200 OK` with `[]`.
-- Unhandled errors and status-only responses use RFC 7807 `ProblemDetails`.
-- OpenAPI document: `/openapi/v1.json` in Development.
-- Health: `GET /health` (includes a database connectivity check).
+Unhandled errors use `ProblemDetails` responses.
 
-## 10. Docker Compose
+## Project layout
 
-```bash
-cp .env.example .env    # optional overrides
-docker compose up --build
+```text
+src/
+  MarcasAutos.Api/             Controllers, HTTP error handling, health and OpenAPI
+  MarcasAutos.Application/     Service, DTOs and repository contract
+  MarcasAutos.Infrastructure/  EF Core, PostgreSQL and migrations
+tests/
+  MarcasAutos.UnitTests/       Service and controller tests
+  MarcasAutos.IntegrationTests/ HTTP tests using WebApplicationFactory and SQLite
 ```
 
-Services:
+Requests flow from the controller to the application service, then through the repository contract to the EF Core implementation. The controller does not use EF Core directly, and responses use DTOs rather than persistence entities.
 
-| Service | Purpose |
-|---------|---------|
-| `db` | PostgreSQL 17 with a persistent volume and `pg_isready` health check |
-| `migrator` | One-shot container that applies EF Core migrations, waits for a healthy database |
-| `api` | Published API image, starts only after the migrator exits successfully |
+## Database and seed data
 
-The API is available at `http://localhost:8080`. Port mappings are configurable with `POSTGRES_PORT` and `API_PORT`.
+The `MarcasAutos` table has an integer identity key and a required name up to 100 characters. Brand names have a unique index. The initial EF Core migration inserts four fixed examples: Toyota, Ford, Honda and Chevrolet.
 
-Verification:
+To create a migration after changing the model:
 
 ```bash
-curl -fsS http://localhost:8080/health
-curl -fsS http://localhost:8080/api/v1/marcas-autos
-docker exec marcas-autos-db psql -U postgres -d marcas_autos -c 'SELECT * FROM "MarcasAutos";'
+dotnet ef migrations add <MigrationName> \
+  --project src/MarcasAutos.Infrastructure \
+  --startup-project src/MarcasAutos.Api \
+  --output-dir Persistence/Migrations
 ```
 
-Because the API waits for `migrator` to complete, the schema and seed data exist before the first request.
+Apply it with `dotnet ef database update` as shown above. The application uses migrations rather than `EnsureCreated`.
 
-## 11. Testing
+## Tests and coverage
 
 ```bash
 dotnet test
-```
-
-- Unit tests: isolated InMemory database per test; success, empty and cancellation paths; controller delegation, empty payload and token forwarding; missing-connection-string fail-fast.
-- Integration tests: `WebApplicationFactory` with a relational SQLite in-memory database; seeded response, empty database, health check and `ProblemDetails` for unknown routes.
-
-## 12. Coverage
-
-```bash
 ./scripts/coverage.sh
 ```
 
-The script runs both test projects with `coverlet.runsettings` and writes an HTML report plus summary in `coverage/report`.
+Unit tests use a fresh EF Core InMemory database per test. HTTP integration tests use SQLite in memory so they exercise a relational database through the real API host. The Compose smoke test separately verifies PostgreSQL migrations and seed data.
 
-Current result on authored code: **100% line, 100% branch**. Exclusions are limited to generated code: EF Core migrations (`**/Migrations/*.cs`) and source-generated files (`**/*.generated.cs`).
+Coverage reports are written to `coverage/report`. The current report is 100% line and branch coverage for authored code; only generated EF migration and source-generated files are excluded in `coverlet.runsettings`.
 
-## 13. Design decisions and trade-offs
+## Configuration and design notes
 
-| Decision | Rationale |
-|----------|-----------|
-| Three production projects | Proportional layering; no separate domain project for one entity |
-| Repository port owned by Application | Keeps EF Core out of application and HTTP layers without a generic repository |
-| `HasData` for seed | Deterministic, migration-owned reference data |
-| InMemory for unit tests, SQLite for HTTP tests | Fast isolation plus relational behavior; PostgreSQL validated separately through migrations and Compose |
-| Dedicated migrator service | One migration owner instead of racing multiple API replicas at startup |
-| Local dev connection string in `appsettings.json` | Non-secret defaults for first run; environment variables override them |
-| No CQRS/MediatR/generic repositories | Unnecessary for a single read endpoint |
-
-## 14. Environment checks and limitations
-
-- `scripts/preflight.sh` checks the SDK, Docker daemon and PostgreSQL with a 5-second timeout per dependency and logs to `logs/preflight.log`; operational incidents are recorded in `docs/tasks/incidents.md`.
-- SQLite and InMemory do not reproduce every PostgreSQL behavior; migration execution and seed data are verified against PostgreSQL.
-- The Compose stack runs a single API instance. Horizontal scaling would require a separate migration job, which the `migrator` service already models.
+- Compose uses `db` as the database hostname inside the network; containers should not connect to `localhost` for PostgreSQL.
+- Migrations run in a one-shot service before the API starts, rather than racing during API startup.
+- `.env` is ignored by Git. `.env.example` contains local development defaults only; do not put real credentials in committed files.
+- Unit-test InMemory and SQLite do not reproduce every PostgreSQL behavior, so the Compose smoke test checks the real provider as well.
+- `scripts/preflight.sh` checks local dependencies and stops after five seconds if one does not respond. It records results in `logs/preflight.log`.
