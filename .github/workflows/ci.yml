@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore MarcasAutos.sln
+
+      - name: Build
+        run: dotnet build MarcasAutos.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test MarcasAutos.sln -c Release --no-build
