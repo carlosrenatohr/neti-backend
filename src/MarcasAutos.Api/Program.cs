@@ -6,6 +6,13 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// -- Render (and similar hosts) inject PORT at runtime; bind to it when present --
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 builder.Services.AddControllers();
 
 // -- OpenAPI document generated from the real controllers and DTOs --

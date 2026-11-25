@@ -2,7 +2,6 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: marcas-autos-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-marcas_autos}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
