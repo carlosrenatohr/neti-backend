@@ -2,13 +2,14 @@
 
 Read-only ASP.NET Core API that lists car brands stored in PostgreSQL. The endpoint contract is stable and versioned in the URL (`/api/v1`), the schema evolves through EF Core migrations, and the API ships as a container image.
 
-| Documentation | Local |
-|---------------|-------|
-| Interactive reference (Scalar) | `http://localhost:8080/scalar` |
-| OpenAPI 3.1 document | `http://localhost:8080/openapi/v1.json` |
-| Liveness / readiness | `/health/live` / `/health` |
+| Resource | Local | Public |
+|----------|-------|--------|
+| Interactive reference (Scalar) | `http://localhost:8080/scalar` | https://marcas-autos-api.onrender.com/scalar |
+| OpenAPI 3.1 document | `http://localhost:8080/openapi/v1.json` | https://marcas-autos-api.onrender.com/openapi/v1.json |
+| API endpoint | `http://localhost:8080/api/v1/marcas-autos` | https://marcas-autos-api.onrender.com/api/v1/marcas-autos |
+| Liveness / readiness | `/health/live` / `/health` | `/health/live` / `/health` |
 
-Public URLs are added after the first production deployment. See [Deployment](docs/deployment.md).
+Deployment details are in [docs/deployment.md](docs/deployment.md).
 
 ## Stack
 
@@ -163,4 +164,12 @@ Production runs on Render (Docker web service) with a Neon PostgreSQL database. 
 GitHub main → Render (Dockerfile) → Neon PostgreSQL
 ```
 
-The service must receive `ConnectionStrings__MarcasAutos` and expose `/health/live` as its health check path. Secrets are configured in Render, never in the repository. Full steps, migration policy and rollback notes are in [docs/deployment.md](docs/deployment.md).
+- API: https://marcas-autos-api.onrender.com
+- Scalar: https://marcas-autos-api.onrender.com/scalar
+- OpenAPI: https://marcas-autos-api.onrender.com/openapi/v1.json
+
+The service receives `ConnectionStrings__MarcasAutos` in Npgsql keyword/value format and exposes `/health/live` for platform probes. Secrets are configured in Render, never in the repository. Full steps, migration policy and rollback notes are in [docs/deployment.md](docs/deployment.md).
+
+## Version
+
+The current software version is `1.0.0` (tag `v1.0.0`). It is independent from the HTTP API version `/api/v1`. Release and branching rules are in [docs/versioning.md](docs/versioning.md).
