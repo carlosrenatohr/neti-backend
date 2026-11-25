@@ -483,3 +483,4 @@ $RECYCLE.BIN/
 
 # Local operational logs
 logs/
+coverage/
