@@ -1,0 +1,9 @@
+# -- Keep the build context small and free of host artifacts --
+**/bin/
+**/obj/
+**/.git/
+coverage/
+logs/
+docs/
+.github/
+*.user
