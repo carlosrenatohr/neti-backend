@@ -22,6 +22,8 @@ tests/
 
 Status legend: `[ ]` pending · `[x]` done and verified.
 
+Current status: Phases 0–6 implemented and verified; Phase 7 documentation in progress; Phases 8 pending final review.
+
 ### Phase 0 — Environment discovery and baseline
 
 | ID | Task | Files | Depends on | Acceptance | Validation |
@@ -114,6 +116,9 @@ Never advance on a red gate. Never claim a validation passed without output evid
 | D5 | `docs/tasks/` in repository | Planning stays version-controlled and portable |
 | D6 | Empty result returns `200` with `[]` | Collection exists and query succeeded |
 | D7 | No CQRS, generic repositories, extra layers | Keep the solution proportional to the challenge |
+| D8 | One-shot `migrator` service in Compose | A single migration owner avoids concurrent startup migrations |
+| D9 | Coverage excludes only generated code | Migrations and source-generated files are not authored logic; exclusion is explicit in `coverlet.runsettings` |
+| D10 | Preflight with 5-second timeouts + scheduled log | Detect stuck dependencies and preserve evidence instead of stalling |
 
 ## Open items
 
