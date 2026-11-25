@@ -53,7 +53,9 @@ app.MapOpenApi();
 // -- Scalar is the only visual documentation UI, fed by the generated document --
 app.MapScalarApiReference(options => options
     .WithTitle("Marcas Autos API")
-    .WithOpenApiRoutePattern("/openapi/{documentName}.json"));
+    .AddDocument("v1", "Marcas Autos API v1")
+    .WithOpenApiRoutePattern("/openapi/{documentName}.json")
+    .ExpandAllTags());
 
 // -- Liveness for platform probes; /health also checks database readiness --
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
