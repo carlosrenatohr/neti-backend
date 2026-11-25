@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MarcasAutos.Application.Contracts;
 
 namespace MarcasAutos.IntegrationTests;
@@ -53,6 +54,43 @@ public sealed class MarcasAutosEndpointTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task GetOpenApiDocument_ExposesTheRealContract()
+    {
+        using var factory = new MarcasAutosApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/openapi/v1.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal("Marcas Autos API", root.GetProperty("info").GetProperty("title").GetString());
+        Assert.Equal("v1", root.GetProperty("info").GetProperty("version").GetString());
+
+        var operation = root.GetProperty("paths")
+            .GetProperty("/api/v1/marcas-autos")
+            .GetProperty("get");
+
+        Assert.Contains("List car brands", operation.GetProperty("summary").GetString());
+        Assert.True(operation.GetProperty("responses").TryGetProperty("200", out _));
+    }
+
+    [Fact]
+    public async Task GetScalar_ReturnsHtmlThatLoadsTheOpenApiDocument()
+    {
+        using var factory = new MarcasAutosApiFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/scalar");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("openapi/v1.json", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

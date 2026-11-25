@@ -11,7 +11,10 @@ public sealed class MarcasAutosController(IMarcasAutosService marcasAutosService
 {
     // -- Thin controller: HTTP concerns only, the query lives in the application service --
     [HttpGet]
+    [EndpointSummary("List car brands")]
+    [EndpointDescription("Returns all car brands stored in the database, ordered by name.")]
     [ProducesResponseType<IReadOnlyList<MarcaAutoDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IReadOnlyList<MarcaAutoDto>>> GetAll(CancellationToken cancellationToken)
     {
         var marcas = await marcasAutosService.GetAllAsync(cancellationToken);

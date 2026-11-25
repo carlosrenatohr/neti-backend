@@ -1,11 +1,28 @@
 using MarcasAutos.Application;
 using MarcasAutos.Infrastructure;
 using MarcasAutos.Infrastructure.Persistence;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+
+// -- OpenAPI document generated from the real controllers and DTOs --
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "Marcas Autos API";
+        document.Info.Version = "v1";
+        document.Info.Description =
+            "Read-only API that exposes the car brands stored in PostgreSQL.";
+
+        // -- Host-agnostic document: clients and Scalar resolve the current origin --
+        document.Servers.Clear();
+        return Task.CompletedTask;
+    });
+});
 
 // -- Standardized RFC 7807 responses for unhandled exceptions and error status codes --
 builder.Services.AddProblemDetails();
@@ -23,10 +40,12 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.MapOpenApi();
+
+// -- Scalar is the only visual documentation UI, fed by the generated document --
+app.MapScalarApiReference(options => options
+    .WithTitle("Marcas Autos API")
+    .WithOpenApiRoutePattern("/openapi/{documentName}.json"));
 
 app.MapHealthChecks("/health");
 app.MapControllers();
