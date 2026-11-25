@@ -1,6 +1,7 @@
 using MarcasAutos.Application;
 using MarcasAutos.Infrastructure;
 using MarcasAutos.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -26,7 +27,7 @@ builder.Services.AddOpenApi(options =>
             "Read-only API that exposes the car brands stored in PostgreSQL.";
 
         // -- Host-agnostic document: clients and Scalar resolve the current origin --
-        document.Servers.Clear();
+        document.Servers?.Clear();
         return Task.CompletedTask;
     });
 });
@@ -54,6 +55,8 @@ app.MapScalarApiReference(options => options
     .WithTitle("Marcas Autos API")
     .WithOpenApiRoutePattern("/openapi/{documentName}.json"));
 
+// -- Liveness for platform probes; /health also checks database readiness --
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health");
 app.MapControllers();
 

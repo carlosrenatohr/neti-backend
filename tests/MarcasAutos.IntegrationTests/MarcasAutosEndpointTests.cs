@@ -1,7 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using MarcasAutos.Application.Abstractions;
 using MarcasAutos.Application.Contracts;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MarcasAutos.IntegrationTests;
 
@@ -94,6 +98,26 @@ public sealed class MarcasAutosEndpointTests
     }
 
     [Fact]
+    public async Task UnhandledError_ReturnsProblemDetailsWithoutInternals()
+    {
+        using var factory = new MarcasAutosApiFactory().WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IMarcasAutosService>();
+                services.AddScoped<IMarcasAutosService, ThrowingMarcasAutosService>();
+            }));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/marcas-autos");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.False(document.RootElement.TryGetProperty("detail", out _));
+    }
+
+    [Fact]
     public async Task UnknownRoute_ReturnsProblemDetails()
     {
         using var factory = new MarcasAutosApiFactory();
@@ -103,5 +127,11 @@ public sealed class MarcasAutosEndpointTests
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    private sealed class ThrowingMarcasAutosService : IMarcasAutosService
+    {
+        public Task<IReadOnlyList<MarcaAutoDto>> GetAllAsync(CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Simulated failure.");
     }
 }
