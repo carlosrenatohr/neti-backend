@@ -7,7 +7,7 @@ LOG_DIR="$ROOT_DIR/logs"
 LOG_FILE="$LOG_DIR/preflight.log"
 TIMEOUT_SECONDS="${PREFLIGHT_TIMEOUT:-5}"
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-POSTGRES_PORT="${POSTGRES_PORT:-5433}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 API_HEALTH_URL="${API_HEALTH_URL:-}"
 
 STATUS=0
@@ -31,7 +31,7 @@ check() {
   fi
 }
 
-check "dotnet-sdk" bash -c '"$HOME/.dotnet/dotnet" --version'
+check "dotnet-sdk" bash -c 'command -v dotnet >/dev/null && dotnet --version || "$HOME/.dotnet/dotnet" --version'
 check "docker-daemon" docker info
 check "postgres" pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT"
 
